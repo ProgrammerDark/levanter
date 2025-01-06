@@ -1,8 +1,6 @@
 FROM archlinux
 RUN pacman -Syu --noconfirm
 RUN pacman -S git ffmpeg curl --noconfirm
-RUN curl -fsSL https://deb.nodesource.com/setup_20.x -o nodesource_setup.sh
-RUN bash nodesource_setup.sh 
 RUN pacman -S nodejs --noconfirm
 RUN npm i -g yarn --noconfirm
 RUN yarn global add pm2 --noconfirm
