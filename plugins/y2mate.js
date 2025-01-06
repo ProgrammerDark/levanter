@@ -1,14 +1,25 @@
 const {
-  y2mate,
   bot,
   getBuffer,
-  // genButtonMessage,
   addAudioMetaData,
   yts,
   generateList,
-} = require('../lib/')
+} = require('../lib/');
+const { exec } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+require('dotenv').config();
+
 const ytIdRegex =
-  /(?:http(?:s|):\/\/|)(?:(?:www\.|)youtube(?:\-nocookie|)\.com\/(?:watch\?.*(?:|\&)v=|embed|shorts\/|v\/)|youtu\.be\/)([-_0-9A-Za-z]{11})/
+  /(?:http(?:s|):\/\/|)(?:(?:www\.|)youtube(?:\-nocookie|)\.com\/(?:watch\?.*(?:|\&)v=|embed|shorts\/|v\/)|youtu\.be\/)([-_0-9A-Za-z]{11})/;
+
+function getCookiesFilePath() {
+  const cookiesFilePath = process.env.COOKIES_FILE;
+  if (!cookiesFilePath) {
+    throw new Error('COOKIES_FILE is not defined in the .env file');
+  }
+  return `--cookies ${cookiesFilePath}`;
+}
 
 bot(
   {
@@ -20,71 +31,32 @@ bot(
     match = match || message.reply_message.text;
     if (!match) return await message.send('_Example : ytv url_');
 
-    if (match.startsWith('y2mate;')) {
-      const [_, q, id] = match.split(';');
-      const result = await y2mate.dl(id, 'video', q);
-      return await message.sendFromUrl(result, { quoted: message.data });
-    }
-
     if (!ytIdRegex.test(match))
       return await message.send('*Give me a yt link!*', {
         quoted: message.data,
       });
 
-    const vid = ytIdRegex.exec(match);
-    const data = await y2mate.get(vid[1]);
+    const vid = ytIdRegex.exec(match)[1];
+    const outputPath = path.resolve(__dirname, `../downloads/${vid}.mp4`);
+    const cookiesFlag = getCookiesFilePath();
 
-    if (!data || !data.video) {
-      return await message.send('*Video not found or unsupported format*', {
-        quoted: message.data,
-      });
-    }
+    // Execute yt-dlp command to download video with cookies
+    exec(`yt-dlp ${cookiesFlag} -f bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4 --output "${outputPath}" "https://www.youtube.com/watch?v=${vid}"`, async (error, stdout, stderr) => {
+      if (error) {
+        console.error(`Error: ${error.message}`);
+        return await message.send('*Failed to download video.*', {
+          quoted: message.data,
+        });
+      }
 
-    const { title, video, thumbnail, time } = data;
-    const buttons = [];
-
-    for (const q in video) {
-      buttons.push({
-        text: `${q}(${video[q]?.fileSizeH || video[q]?.size || 'unknown'})`,
-        id: `ytv y2mate;${q};${vid[1]}`,
-      });
-    }
-
-    if (!buttons.length)
-      return await message.send('*Not found*', {
-        quoted: message.quoted,
-      });
-
-    const list = generateList(
-      buttons,
-      title + `(${time})\n`,
-      message.jid,
-      message.participant,
-      message.id
-    );
-
-    if (list.type === 'text')
-      return await message.sendFromUrl(thumbnail, {
-        caption: '```' + list.message + '```',
-        buffer: false,
-      });
-
-    return await message.send(list.message, {}, list.type);
-
-    return await message.send(
-      await genButtonMessage(
-        buttons,
-        title,
-        time,
-        { image: thumbnail },
-        message
-      ),
-      {},
-      'button'
-    );
+      // Send downloaded video
+      await message.sendFromFile(outputPath, { quoted: message.data });
+      
+      // Cleanup
+      fs.unlinkSync(outputPath);
+    });
   }
 );
-
 
 bot(
   {
@@ -93,21 +65,29 @@ bot(
     type: 'download',
   },
   async (message, match) => {
-    match = match || message.reply_message.text
-    if (!match) return await message.send('_Example : yta darari/yt url_')
-    const vid = ytIdRegex.exec(match)
-    if (vid) match = vid[1]
-    const [video] = await yts(match, !!vid)
-    const { title, thumbnail, id } = video
-    const audio = await y2mate.get(id)
-    const result = await y2mate.dl(id, 'audio')
-    if (!result) return await message.send(`_not found._`, { quoted: message.data })
-    const { buffer } = await getBuffer(result)
-    if (!buffer) return await message.send(result, { quoted: message.data })
-    return await message.send(
-      await addAudioMetaData(buffer, title, '', '', thumbnail.url),
-      { quoted: message.data, mimetype: 'audio/mpeg' },
-      'audio'
-    )
+    match = match || message.reply_message.text;
+    if (!match) return await message.send('_Example : yta url_');
+
+    const vid = ytIdRegex.exec(match)[1];
+    const outputPath = path.resolve(__dirname, `../downloads/${vid}.mp3`);
+    const cookiesFlag = getCookiesFilePath();
+
+    // Execute yt-dlp command to download audio with cookies
+    exec(`yt-dlp ${cookiesFlag} -f bestaudio[ext=m4a]/bestaudio --output "${outputPath}" "https://www.youtube.com/watch?v=${vid}"`, async (error, stdout, stderr) => {
+      if (error) {
+        console.error(`Error: ${error.message}`);
+        return await message.send('*Failed to download audio.*', {
+          quoted: message.data,
+        });
+      }
+
+      // Add audio metadata and send audio
+      const buffer = fs.readFileSync(outputPath);
+      const audioMetaData = await addAudioMetaData(buffer, vid, '', '', `https://i.ytimg.com/vi/${vid}/hqdefault.jpg`);
+      await message.send(audioMetaData, { quoted: message.data, mimetype: 'audio/mpeg' }, 'audio');
+
+      // Cleanup
+      fs.unlinkSync(outputPath);
+    });
   }
-)
+);
