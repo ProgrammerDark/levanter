@@ -28,7 +28,7 @@ RUN git clone https://aur.archlinux.org/yay.git && \
 RUN yay -S --noconfirm yt-dlp
 RUN sudo pacman -S git ffmpeg curl wget nodejs npm --noconfirm
 RUN sudo npm i -g yarn --noconfirm
-RUN yarn global add pm2 --noconfirm
+RUN sudo npm i -g pm2 --noconfirm
 RUN git clone https://github.com/lyfe00011/levanter.git /home/levanter/LyFE/
 WORKDIR /home/levanter/LyFE/
 RUN yarn install
