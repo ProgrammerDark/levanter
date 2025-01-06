@@ -26,7 +26,7 @@ RUN git clone https://aur.archlinux.org/yay.git && \
 
 # Use yay to install yt-dlp
 RUN yay -S --noconfirm yt-dlp
-RUN pacman -S git ffmpeg curl wget nodejs npm --noconfirm
+RUN sudo pacman -S git ffmpeg curl wget nodejs npm --noconfirm
 RUN npm i -g yarn --noconfirm
 RUN yarn global add pm2 --noconfirm
 RUN git clone https://github.com/lyfe00011/levanter.git /root/LyFE/
