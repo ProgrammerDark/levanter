@@ -17,56 +17,74 @@ bot(
     type: 'download',
   },
   async (message, match) => {
-    match = match || message.reply_message.text
-    if (!match) return await message.send('_Example : ytv url_')
+    match = match || message.reply_message.text;
+    if (!match) return await message.send('_Example : ytv url_');
+
     if (match.startsWith('y2mate;')) {
-      const [_, q, id] = match.split(';')
-      const result = await y2mate.dl(id, 'video', q)
-      return await message.sendFromUrl(result, { quoted: message.data })
+      const [_, q, id] = match.split(';');
+      const result = await y2mate.dl(id, 'video', q);
+      return await message.sendFromUrl(result, { quoted: message.data });
     }
+
     if (!ytIdRegex.test(match))
       return await message.send('*Give me a yt link!*', {
         quoted: message.data,
-      })
-    const vid = ytIdRegex.exec(match)
-    const { title, video, thumbnail, time } = await y2mate.get(vid[1])
-    const buttons = []
-    for (const q in video)
+      });
+
+    const vid = ytIdRegex.exec(match);
+    const data = await y2mate.get(vid[1]);
+
+    if (!data || !data.video) {
+      return await message.send('*Video not found or unsupported format*', {
+        quoted: message.data,
+      });
+    }
+
+    const { title, video, thumbnail, time } = data;
+    const buttons = [];
+
+    for (const q in video) {
       buttons.push({
-        text: `${q}(${video[q].fileSizeH || video[q].size})`,
+        text: `${q}(${video[q]?.fileSizeH || video[q]?.size || 'unknown'})`,
         id: `ytv y2mate;${q};${vid[1]}`,
-      })
+      });
+    }
+
     if (!buttons.length)
       return await message.send('*Not found*', {
         quoted: message.quoted,
-      })
+      });
+
     const list = generateList(
       buttons,
       title + `(${time})\n`,
       message.jid,
       message.participant,
       message.id
-    )
+    );
+
     if (list.type === 'text')
       return await message.sendFromUrl(thumbnail, {
         caption: '```' + list.message + '```',
         buffer: false,
-      })
-    return await message.send(list.message, {}, list.type)
+      });
+
+    return await message.send(list.message, {}, list.type);
 
     return await message.send(
-    	await genButtonMessage(
-    		buttons,
-    		title,
-    		time,
-    		{ image: thumbnail },
-    		message
-    	),
-    	{},
-    	'button'
-    )
+      await genButtonMessage(
+        buttons,
+        title,
+        time,
+        { image: thumbnail },
+        message
+      ),
+      {},
+      'button'
+    );
   }
-)
+);
+
 
 bot(
   {
