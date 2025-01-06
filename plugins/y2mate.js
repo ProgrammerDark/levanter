@@ -54,17 +54,17 @@ bot(
       })
     return await message.send(list.message, {}, list.type)
 
-    // return await message.send(
-    // 	await genButtonMessage(
-    // 		buttons,
-    // 		title,
-    // 		time,
-    // 		{ image: thumbnail },
-    // 		message
-    // 	),
-    // 	{},
-    // 	'button'
-    // )
+    return await message.send(
+    	await genButtonMessage(
+    		buttons,
+    		title,
+    		time,
+    		{ image: thumbnail },
+    		message
+    	),
+    	{},
+    	'button'
+    )
   }
 )
 
