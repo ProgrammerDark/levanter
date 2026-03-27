@@ -1,6 +1,5 @@
 *.log
 node_modules/
-eplugins/
 *.db
 *-lock.json
 *.env
